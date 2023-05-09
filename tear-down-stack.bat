@@ -1,2 +1,2 @@
 @echo off
-aws cloudformation delete-stack --stack-name WordPressServas
+aws cloudformation delete-stack --stack-name WordPressServer

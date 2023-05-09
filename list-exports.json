@@ -1,0 +1,14 @@
+{
+    "Exports": [
+        {
+            "ExportingStackId": "arn:aws:cloudformation:us-east-1:989450660309:stack/WordPressServer/52087dc0-ee61-11ed-98fa-0a35621ce4f9",
+            "Name": "InstanceId",
+            "Value": "i-0fe9bd54041c481bb"
+        },
+        {
+            "ExportingStackId": "arn:aws:cloudformation:us-east-1:989450660309:stack/WordPressServer/52087dc0-ee61-11ed-98fa-0a35621ce4f9",
+            "Name": "ServerIP",
+            "Value": "http://ec2-52-55-241-44.compute-1.amazonaws.com:80"
+        }
+    ]
+}
