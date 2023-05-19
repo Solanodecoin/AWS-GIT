@@ -42,6 +42,10 @@ Resources:
         CidrIp: 0.0.0.0/0
   WordPressServer:
     Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+          Timeout: PT7M
+          Count: 1
     Properties:
       ImageId: !Ref EC2AMI
       InstanceType: !Ref InstanceTypeParameter
@@ -49,6 +53,17 @@ Resources:
       IamInstanceProfile: LabInstanceProfile
       SecurityGroupIds: 
         - !Ref WebSecurityGroup
+      UserData:   
+        Fn::Base64: !Sub | 
+          #!/bin/bash 
+          exec > /tmp/install.log 2 / & 1
+          sudo dnf update -y 
+          sudo dnf install -y httpd wget php-fpm php-mysqli php-json php php-devel
+          sudo dnf install -y mariadb105-server
+          sudo systemctl start httpd 
+          sudo systemctl enable httpd  
+          opt/aas/bin/cfn-signed -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource WordPressServer
+
       Tags:
         - Key: Name
           Value: 
@@ -56,6 +71,7 @@ Resources:
               - "-"
               - - !Ref "AWS::StackName"
                 - !Ref "AWS::AccountId"
+
 Outputs:
   InstancesID:
     Description: "instanciaID"
@@ -67,3 +83,10 @@ Outputs:
     Value: !Sub http://${WordPressServer.PublicDnsName}:80
     Export:
       Name: ServerIP
+  
+
+ 
+       
+
+
+                  
