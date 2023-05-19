@@ -47,8 +47,8 @@ Resources:
           Timeout: PT7M
           Count: 1
     Properties:
-      ImageId: !Ref EC2AMI
-      InstanceType: !Ref InstanceTypeParameter
+      ImageId: ami-0889a44b331db0194
+      InstanceType: t2.small
       KeyName: vockey
       IamInstanceProfile: LabInstanceProfile
       SecurityGroupIds: 
@@ -62,7 +62,7 @@ Resources:
           sudo dnf install -y mariadb105-server
           sudo systemctl start httpd 
           sudo systemctl enable httpd  
-          opt/aas/bin/cfn-signed -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource WordPressServer
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource WordPressServer
 
       Tags:
         - Key: Name
@@ -84,6 +84,7 @@ Outputs:
     Export:
       Name: ServerIP
   
+
 
  
        
