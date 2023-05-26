@@ -1,6 +1,13 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Grupo de Seguridad y plantilla
 Parameters:
+  DBName:
+    Default: BBDD_PabloPilas
+    
+    Description: Base de datos
+    Type: String
+    MinLength: '1'
+     
   InstanceTypeParameter:
     Type: String
     Default: t2.small
@@ -15,6 +22,29 @@ Parameters:
     Default: "/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
 
 Resources:
+
+  BBDD:
+    Type: AWS::RDS::DBInstance
+    Properties: 
+      DBName: !Ref DBName
+      DBInstanceClass: db.t3.medium
+      Engine: mariadb
+      EngineVersion: "10.6.10"
+      MasterUsername: Pablo
+      MasterUserPassword: '12345678'
+      AllocatedStorage: '200'
+      VPCSecurityGroups: 
+      - !GetAtt  BBDDSecurityGroup.GroupId
+  BBDDSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: BBDD SECURITY GROUP
+      SecurityGroupIngress:   
+      - IpProtocol: TCP
+        FromPort: 3306
+        ToPort: 3306
+        SourceSecurityGroupName:
+          !Ref WebSecurityGroup
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -40,6 +70,10 @@ Resources:
         FromPort: 443
         ToPort: 443
         CidrIp: 0.0.0.0/0
+      - IpProtocol: TCP
+        FromPort: 3306
+        ToPort: 3306
+        
   WordPressServer:
     Type: AWS::EC2::Instance
     CreationPolicy:
@@ -56,12 +90,35 @@ Resources:
       UserData:   
         Fn::Base64: !Sub | 
           #!/bin/bash 
-          exec > /tmp/install.log 2 / & 1
           sudo dnf update -y 
-          sudo dnf install -y httpd wget php-fpm php-mysqli php-json php php-devel
-          sudo dnf install -y mariadb105-server
+          sudo dnf install -y httpd wget php-fpm php-mysqli php-json php8.1 php-devel
+          sudo dnf install -y mariadb105
           sudo systemctl start httpd 
-          sudo systemctl enable httpd  
+          sudo dnf install wget php-mysqlnd httpd php-fpm php-mysqli mariadb105-server php-json php php-devel -y
+          wget https://wordpress.org/latest.tar.gz
+          tar -xzf latest.tar.gz
+          sudo systemctl start mariadb httpd
+          sudo mv /wordpress/* /var/www/html
+          sudo mysqladmin -u root password 
+          sudo mysql -u Pablo -p12345678 -P ${BBDD.Endpoint.Port} -h ${BBDD.Endpoint.Address} -e "CREATE DATABASE `wordpress-pablo`;
+          CREATE USER 'wordpress-user-pablo'@'localhost' IDENTIFIED BY 'root';
+          GRANT ALL PRIVILEGES ON `wordpress-db`.* TO "wordpress-user-pablo"@"localhost";
+          FLUSH PRIVILEGES;
+          cp wordpress/wp-config-sample.php wordpress/wp-config.php
+          sed 's/NONE/ALLOW/3' wp-config.php
+          sed 's/username_here/Pablo' wp-config.php  
+          sed 's/password_here/12345678' wp-config.php
+          # Make sure that NOBODY can access the server without a password 
+          mysql -e "UPDATE mysql.user SET Password = PASSWORD('CHANGEME') WHERE User = 'root'" 
+          # Kill the anonymous users 
+          mysql -e "DROP USER ''@'localhost'" 
+          # Because our hostname varies we'll use some Bash magic here. 
+          mysql -e "DROP USER ''@'$(hostname)'" 
+          # Kill off the demo database
+          mysql -e "DROP DATABASE test" 
+          # Make our changes take effect 
+          mysql -e "FLUSH PRIVILEGES""
+          exit
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource WordPressServer
 
       Tags:
@@ -71,7 +128,7 @@ Resources:
               - "-"
               - - !Ref "AWS::StackName"
                 - !Ref "AWS::AccountId"
-
+            
 Outputs:
   InstancesID:
     Description: "instanciaID"
@@ -83,6 +140,7 @@ Outputs:
     Value: !Sub http://${WordPressServer.PublicDnsName}:80
     Export:
       Name: ServerIP
+
   
 
 
